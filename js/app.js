@@ -3,60 +3,60 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-let POKES = []; // será llenado por loadGeneration()
-const TYPE_EMOJI = {
-  fuego: '🔥', agua: '💧', planta: '🌿', electrico: '⚡', normal: '⭐'
-};
+  let POKES = []; // será llenado por loadGeneration()
+  const TYPE_EMOJI = {
+    fuego: '🔥', agua: '💧', planta: '🌿', electrico: '⚡', normal: '⭐'
+  };
 
-async function loadLocalGen(gen = 1) {
-  function mapType(type) {
-    const dict = {
-      fire: 'fuego',
-      water: 'agua',
-      grass: 'planta',
-      electric: 'electrico',
-      normal: 'normal',
-      psychic: 'normal',
-      flying: 'normal',
-      poison: 'normal',
-      // agrega más si quieres
-    };
-    return dict[type] || 'normal';
-  }
+  async function loadLocalGen(gen = 1) {
+    function mapType(type) {
+      const dict = {
+        fire: 'fuego',
+        water: 'agua',
+        grass: 'planta',
+        electric: 'electrico',
+        normal: 'normal',
+        psychic: 'normal',
+        flying: 'normal',
+        poison: 'normal',
+        // agrega más si quieres
+      };
+      return dict[type] || 'normal';
+    }
 
-  try {
-    log('Cargando datos de Pokémon (gen ' + gen + ')...');
-    const res = await fetch(`/data/gen${gen}.json`);
-    if (!res.ok) throw new Error('JSON no encontrado: ' + res.status);
-    const arr = await res.json();
-    // mapear cada entrada al formato esperado por el juego básico
-    POKES = arr
-      .filter(p => p && p.name && p.types && p.types.length) // filtra entradas vacías
-      .map(p => {
-        const hp = (p.stats && p.stats.hp) ? p.stats.hp : 40;
-        const atk = (p.stats && p.stats.attack) ? p.stats.attack : 10;
-        const typeEn = p.types[0];
-        const typeEs = mapType(typeEn);
-        return {
-          id: p.id,
-          name: capitalize(p.name),
-          type: typeEs,
-          emoji: TYPE_EMOJI[typeEs] || TYPE_EMOJI['normal'],
-          hp,
-          atk,
-          maxHp: hp,
-          sprite: p.artwork || p.sprite
-        };
-      });
-    log('Datos cargados. ' + POKES.length + ' pokémon disponibles.');
-    startBtn.disabled = false;
-  } catch (err) {
-    console.error(err);
-    log('Error cargando datos locales. Asegúrate de que data/gen1.json exista. Usando POKES por defecto.');
-    startBtn.disabled = false;
+    try {
+      log('Cargando datos de Pokémon (gen ' + gen + ')...');
+      const res = await fetch(`/data/gen${gen}.json`);
+      if (!res.ok) throw new Error('JSON no encontrado: ' + res.status);
+      const arr = await res.json();
+      // mapear cada entrada al formato esperado por el juego básico
+      POKES = arr
+        .filter(p => p && p.name && p.types && p.types.length) // filtra entradas vacías
+        .map(p => {
+          const hp = (p.stats && p.stats.hp) ? p.stats.hp : 40;
+          const atk = (p.stats && p.stats.attack) ? p.stats.attack : 10;
+          const typeEn = p.types[0];
+          const typeEs = mapType(typeEn);
+          return {
+            id: p.id,
+            name: capitalize(p.name),
+            type: typeEs,
+            emoji: TYPE_EMOJI[typeEs] || TYPE_EMOJI['normal'],
+            hp,
+            atk,
+            maxHp: hp,
+            sprite: p.artwork || p.sprite
+          };
+        });
+      log('Datos cargados. ' + POKES.length + ' pokémon disponibles.');
+      startBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      log('Error cargando datos locales. Asegúrate de que data/gen1.json exista. Usando POKES por defecto.');
+      startBtn.disabled = false;
+    }
   }
-}
-function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) : s; }
+  function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) : s; }
 
 
   const EFFECTIVENESS = {
@@ -133,14 +133,22 @@ function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) 
       card.dataset.idx = i;
 
       const hpPercent = clamp(Math.round((c.hp / c.maxHp) * 100), 0, 100);
+      // dentro de renderHands(), al armar innerHTML de la carta (ejemplo para player)
       card.innerHTML = `
-        <div class="sprite">${c.emoji}</div>
+        <div class="sprite">
+          ${c.sprite
+            ? `<img src="${c.sprite}" alt="${c.name}" loading="lazy" width="96" height="72"
+                onerror="this.style.display='none'; this.parentElement.querySelector('.emoji-fallback').style.display='block'">`
+            : ''}
+          <div class="emoji-fallback">${c.emoji || '❓'}</div>
+        </div>
         <h3>${c.name}</h3>
         <div class="types"><div class="type">${c.type}</div></div>
         <div class="stat">ATK: ${c.atk}</div>
         <div class="stat">HP: <span class="hp-text">${c.hp}</span> / ${c.maxHp}</div>
         <div class="hp-bar"><div class="hp-fill" style="width:${hpPercent}%"></div></div>
       `;
+
 
       card.addEventListener('click', () => selectPlayerCard(i));
       playerHandEl.appendChild(card);
@@ -158,7 +166,13 @@ function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) 
       const hpPercent = clamp(Math.round((c.hp / c.maxHp) * 100), 0, 100);
       // puedes ocultar más info si quieres (por ejemplo name/emoji)
       card.innerHTML = `
-        <div class="sprite">${c.emoji}</div>
+        <div class="sprite">
+          ${c.sprite
+            ? `<img src="${c.sprite}" alt="${c.name}" loading="lazy" width="96" height="72"
+                onerror="this.style.display='none'; this.parentElement.querySelector('.emoji-fallback').style.display='block'">`
+            : ''}
+          <div class="emoji-fallback">${c.emoji || '❓'}</div>
+        </div>
         <h3>${c.name}</h3>
         <div class="types"><div class="type">${c.type}</div></div>
         <div class="stat">ATK: ${c.atk}</div>
