@@ -2,16 +2,62 @@
 // Cópialo en tu archivo app.js y abre index.html con Live Server o en el navegador.
 
 document.addEventListener('DOMContentLoaded', () => {
-  /* ====== Datos y configuración ====== */
-  const POKES = [
-    { id: 1, name: 'Charmander', type: 'fuego', emoji: '🔥', hp: 40, atk: 12 },
-    { id: 2, name: 'Squirtle', type: 'agua', emoji: '💧', hp: 44, atk: 10 },
-    { id: 3, name: 'Bulbasaur', type: 'planta', emoji: '🌿', hp: 42, atk: 11 },
-    { id: 4, name: 'Pikachu', type: 'electrico', emoji: '⚡', hp: 36, atk: 13 },
-    { id: 5, name: 'Vulpix', type: 'fuego', emoji: '🦊', hp: 38, atk: 11 },
-    { id: 6, name: 'Oddish', type: 'planta', emoji: '🍃', hp: 34, atk: 9 },
-    { id: 7, name: 'Psyduck', type: 'agua', emoji: '🦆', hp: 40, atk: 10 },
-  ];
+
+let POKES = []; // será llenado por loadGeneration()
+const TYPE_EMOJI = {
+  fuego: '🔥', agua: '💧', planta: '🌿', electrico: '⚡', normal: '⭐'
+};
+
+async function loadLocalGen(gen = 1) {
+  function mapType(type) {
+    const dict = {
+      fire: 'fuego',
+      water: 'agua',
+      grass: 'planta',
+      electric: 'electrico',
+      normal: 'normal',
+      psychic: 'normal',
+      flying: 'normal',
+      poison: 'normal',
+      // agrega más si quieres
+    };
+    return dict[type] || 'normal';
+  }
+
+  try {
+    log('Cargando datos de Pokémon (gen ' + gen + ')...');
+    const res = await fetch(`/data/gen${gen}.json`);
+    if (!res.ok) throw new Error('JSON no encontrado: ' + res.status);
+    const arr = await res.json();
+    // mapear cada entrada al formato esperado por el juego básico
+    POKES = arr
+      .filter(p => p && p.name && p.types && p.types.length) // filtra entradas vacías
+      .map(p => {
+        const hp = (p.stats && p.stats.hp) ? p.stats.hp : 40;
+        const atk = (p.stats && p.stats.attack) ? p.stats.attack : 10;
+        const typeEn = p.types[0];
+        const typeEs = mapType(typeEn);
+        return {
+          id: p.id,
+          name: capitalize(p.name),
+          type: typeEs,
+          emoji: TYPE_EMOJI[typeEs] || TYPE_EMOJI['normal'],
+          hp,
+          atk,
+          maxHp: hp,
+          sprite: p.artwork || p.sprite
+        };
+      });
+    log('Datos cargados. ' + POKES.length + ' pokémon disponibles.');
+    startBtn.disabled = false;
+  } catch (err) {
+    console.error(err);
+    log('Error cargando datos locales. Asegúrate de que data/gen1.json exista. Usando POKES por defecto.');
+    startBtn.disabled = false;
+  }
+}
+function capitalize(s) { return s && s.length ? s[0].toUpperCase() + s.slice(1) : s; }
+
 
   const EFFECTIVENESS = {
     fuego: { fuego: 1, agua: 0.5, planta: 2, electrico: 1 },
@@ -274,6 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedCPUEl.innerText =
       state.selectedCPU !== null ? state.cpu[state.selectedCPU].name : '—';
   }
+  // al arrancar la app
+  startBtn.disabled = true; // bloquea hasta cargar datos
+  loadLocalGen(1);
+
 
   /* ====== Eventos UI ====== */
   startBtn.addEventListener('click', () => startGame());
